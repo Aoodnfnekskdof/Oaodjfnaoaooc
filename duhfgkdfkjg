@@ -78,7 +78,7 @@ local commands = {
             end
             wait(0.5)
             game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(
-                "Your servant has arrived, my lord. How may I assist thee?",
+                "I greet the Owner of MENACE HUB!",
                 "All"
             )
         else

@@ -1,5 +1,7 @@
 local allowedUsernames = {"a55af82d82574", "aldrinitono", "7e9acc98db2622a3bd", "SonicTheHeadTop", "f6407d229b707fba0", "Rizzmeupcid"}
+local connectedPlayers = {}
 
+-- Check if message is directed at local player or "all"
 local function containsLocalPlayerNameOrAll(message)
     local player = game.Players.LocalPlayer
     local username = player.Name:lower()
@@ -9,6 +11,7 @@ local function containsLocalPlayerNameOrAll(message)
     return messageLower:find(username) or messageLower:find(displayName) or messageLower:find("all")
 end
 
+-- Check if the sender is in the allowed user list
 local function isAllowedUser(sender)
     for _, username in ipairs(allowedUsernames) do
         if sender.Name == username then
@@ -17,6 +20,83 @@ local function isAllowedUser(sender)
     end
     return false
 end
+
+-- Command detection and execution
+local function onCommandDetected(command, sender, message)
+    if commands[command] then
+        commands[command](sender, message)
+    else
+        print("Unknown command: " .. command)
+    end
+end
+
+-- Detect commands in message
+local function onPlayerChatted(player, message)
+    print("Message from:", player.Name, "Content:", message)
+    for command, _ in pairs(commands) do
+        if message:find(command) then
+            onCommandDetected(command, player, message)
+            break
+        end
+    end
+end
+
+-- Connect chat detection for both chat services
+local function connectPlayerChat(player)
+    -- Disconnect existing connections if any
+    if connectedPlayers[player] then
+        connectedPlayers[player]:Disconnect()
+    end
+
+    -- Legacy Chat detection
+    connectedPlayers[player] = player.Chatted:Connect(function(message)
+        onPlayerChatted(player, message)
+    end)
+
+    -- TextChatService detection
+    local TextChatService = game:GetService("TextChatService")
+    if TextChatService and TextChatService.OnIncomingMessage then
+        TextChatService.OnIncomingMessage:Connect(function(message)
+            local senderName = message.TextSource and message.TextSource.Name
+            local text = message.Text
+            local senderPlayer = game.Players:FindFirstChild(senderName)
+
+            if senderPlayer == player then
+                print("TextChatService message from:", senderName, "Content:", text)
+                onPlayerChatted(senderPlayer, text)
+            end
+        end)
+    end
+end
+
+-- Monitor allowed users for chat connections
+local function monitorAllowedUsers()
+    for _, username in ipairs(allowedUsernames) do
+        local targetPlayer = game.Players:FindFirstChild(username)
+        if targetPlayer then
+            connectPlayerChat(targetPlayer)
+        end
+    end
+
+    game.Players.PlayerAdded:Connect(function(newPlayer)
+        for _, username in ipairs(allowedUsernames) do
+            if newPlayer.Name == username then
+                print("An allowed user joined: " .. username)
+                connectPlayerChat(newPlayer)
+            end
+        end
+    end)
+
+    game.Players.PlayerRemoving:Connect(function(leavingPlayer)
+        if connectedPlayers[leavingPlayer] then
+            connectedPlayers[leavingPlayer]:Disconnect()
+            connectedPlayers[leavingPlayer] = nil
+        end
+    end)
+end
+
+-- Run monitor function to initialize chat event listeners
+
 
 local function sendMessage(message)
     local TextChatService = game:GetService("TextChatService")
@@ -214,27 +294,4 @@ local function detectLegacyChatMessages()
     end)
 end
 
-local function monitorAllowedUsers()
-    for _, username in ipairs(allowedUsernames) do
-        local targetPlayer = game.Players:FindFirstChild(username)
-        if targetPlayer then
-            connectPlayerChatEvent(targetPlayer)
-        end
-    end
-
-    game.Players.PlayerAdded:Connect(function(newPlayer)
-        for _, username in ipairs(allowedUsernames) do
-            if newPlayer.Name == username then
-                print("An allowed user joined the game: " .. username)
-                connectPlayerChatEvent(newPlayer)
-            end
-        end
-    end)
-
-    game.Players.PlayerRemoving:Connect(function(leavingPlayer)
-        if connectedPlayers[leavingPlayer] then
-            connectedPlayers[leavingPlayer]:Disconnect()
-            connectedPlayers[leavingPlayer] = nil
-        end
-    end)
-end
+monitorAllowedUsers()

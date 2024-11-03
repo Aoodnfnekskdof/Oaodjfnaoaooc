@@ -1,4 +1,4 @@
-local allowedUsernames = {"a55af82d82574", "aldrinitono", "7e9acc98db2622a3bd", "SonicTheHeadTop", "f6407d229b707fba0", "Rizzmeupcid"}
+local allowedUsernames = {"a55af82d82574", "aldrinitono", "7e9acc98db2622a3bd", "SonicTheHeadTop", "f6407d229b707fba0", "Rizzmeupcid", "Ryan12M9x"}
 
 local function containsLocalPlayerNameOrAll(message)
     local player = game.Players.LocalPlayer

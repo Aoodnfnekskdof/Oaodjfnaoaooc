@@ -18,12 +18,15 @@ local function isAllowedUser(sender)
     return false
 end
 
-local function sendChatMessage(message)
-    local args = {
-        [1] = message,
-        [2] = "All"
-    }
-    game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(unpack(args))
+local function sendMessage(message)
+    local TextChatService = game:GetService("TextChatService")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    
+    if TextChatService:FindFirstChild("TextChannels") then
+        TextChatService.TextChannels.RBXGeneral:SendAsync(message)
+    else
+        ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(message, "All")
+    end
 end
 
 local commands = {
@@ -77,10 +80,7 @@ local commands = {
                 end)
             end
             wait(0.5)
-            game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(
-                "I greet the Owner of MENACE HUB!",
-                "All"
-            )
+                sendMessage("I greet the Owner of MENACE HUB!")
         else
             print("Unauthorized attempt to execute !summon command.")
         end
@@ -183,6 +183,37 @@ local function connectPlayerChatEvent(targetPlayer)
     end)
 end
 
+local function detectTextChatServiceMessages()
+    local TextChatService = game:GetService("TextChatService")
+
+    if TextChatService and TextChatService.OnIncomingMessage then
+        TextChatService.OnIncomingMessage:Connect(function(message)
+            local senderName = message.TextSource and message.TextSource.Name
+            local text = message.Text
+
+            if senderName and isAllowedUser(game.Players:FindFirstChild(senderName)) then
+                print("Message received from allowed user:", senderName, "Message:", text)
+                for command, _ in pairs(commands) do
+                    if text:find(command) then
+                        onCommandDetected(command, game.Players:FindFirstChild(senderName), text)
+                        break
+                    end
+                end
+            end
+        end)
+    end
+end
+
+local function detectLegacyChatMessages()
+    for _, player in ipairs(game.Players:GetPlayers()) do
+        connectPlayerChatEvent(player)
+    end
+
+    game.Players.PlayerAdded:Connect(function(player)
+        connectPlayerChatEvent(player)
+    end)
+end
+
 local function monitorAllowedUsers()
     for _, username in ipairs(allowedUsernames) do
         local targetPlayer = game.Players:FindFirstChild(username)
@@ -207,5 +238,3 @@ local function monitorAllowedUsers()
         end
     end)
 end
-
-monitorAllowedUsers()
